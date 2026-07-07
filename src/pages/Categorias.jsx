@@ -31,7 +31,7 @@ export default function Categorias() {
     categoriaId: null,
     subcategoria: null,
   })
-  const [subcategoriaForm, setSubcategoriaForm] = useState({ nombre: '', slug: '' })
+  const [subcategoriaForm, setSubcategoriaForm] = useState({ nombre: '', slug: '', bundle_descuento_x2: 0, bundle_descuento_x3: 0 })
   const [subcategoriaSubmitting, setSubcategoriaSubmitting] = useState(false)
   const [subcategoriaError, setSubcategoriaError] = useState('')
 
@@ -152,8 +152,8 @@ export default function Categorias() {
     setSubcategoriaError('')
     setSubcategoriaForm(
       subcategoria
-        ? { nombre: subcategoria.nombre, slug: subcategoria.slug }
-        : { nombre: '', slug: '' }
+        ? { nombre: subcategoria.nombre, slug: subcategoria.slug, bundle_descuento_x2: subcategoria.bundle_descuento_x2 ?? 0, bundle_descuento_x3: subcategoria.bundle_descuento_x3 ?? 0 }
+        : { nombre: '', slug: '', bundle_descuento_x2: 0, bundle_descuento_x3: 0 }
     )
     setSubcategoriaModal({ open: true, categoriaId, subcategoria })
   }
@@ -174,16 +174,20 @@ export default function Categorias() {
 
     setSubcategoriaSubmitting(true)
     try {
+      const bundlePayload = {
+        bundle_descuento_x2: Number(subcategoriaForm.bundle_descuento_x2) || 0,
+        bundle_descuento_x3: Number(subcategoriaForm.bundle_descuento_x3) || 0,
+      }
       if (subcategoriaModal.subcategoria) {
         const { error: updateError } = await supabase
           .from('subcategorias')
-          .update({ nombre, slug })
+          .update({ nombre, slug, ...bundlePayload })
           .eq('id', subcategoriaModal.subcategoria.id)
         if (updateError) throw updateError
       } else {
         const { error: insertError } = await supabase
           .from('subcategorias')
-          .insert({ nombre, slug, categoria_id: subcategoriaModal.categoriaId })
+          .insert({ nombre, slug, categoria_id: subcategoriaModal.categoriaId, ...bundlePayload })
         if (insertError) throw insertError
       }
       closeSubcategoriaModal()
@@ -406,6 +410,35 @@ export default function Categorias() {
             />
           </div>
 
+          <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-3">
+            <p className="text-xs font-semibold text-orange-800">Descuentos de bundle por subcategoría</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">Dto. bundle x2 (COP/unidad)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={subcategoriaForm.bundle_descuento_x2}
+                  onChange={(e) => setSubcategoriaForm((prev) => ({ ...prev, bundle_descuento_x2: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  placeholder="Ej. 3000"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">Dto. bundle x3 (COP/unidad)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={subcategoriaForm.bundle_descuento_x3}
+                  onChange={(e) => setSubcategoriaForm((prev) => ({ ...prev, bundle_descuento_x3: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  placeholder="Ej. 5000"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">Aplica cuando el cliente lleva 2 o más productos distintos de esta subcategoría (ej. 2 forros diferentes).</p>
+          </div>
+
           {subcategoriaError && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
               {subcategoriaError}
@@ -515,7 +548,15 @@ function FragmentRow({
                   >
                     <div>
                       <p className="text-sm font-medium text-slate-800">{sub.nombre}</p>
-                      <p className="text-xs text-slate-500">{sub.slug}</p>
+                      <p className="text-xs text-slate-500">
+                        {sub.slug}
+                        {(sub.bundle_descuento_x2 > 0 || sub.bundle_descuento_x3 > 0) && (
+                          <span className="ml-2 text-orange-600">
+                            · Bundle x2 ${(sub.bundle_descuento_x2 ?? 0).toLocaleString('es-CO')}/u
+                            {sub.bundle_descuento_x3 > 0 && ` · x3 $${(sub.bundle_descuento_x3).toLocaleString('es-CO')}/u`}
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <div className="flex gap-2">
                       <button
