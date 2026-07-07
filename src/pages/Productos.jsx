@@ -1022,6 +1022,29 @@ export default function Productos() {
                 )}
               </div>
 
+              {/* Preview dinámico del cálculo */}
+              {form.precio && (bundleForm.bundle_2_activo || bundleForm.bundle_3_activo) && (() => {
+                const precio = parseInt(form.precio, 10)
+                const calcPreview = (cantidad, tipo, descuento) => {
+                  if (!descuento) return null
+                  const descU = tipo === 'porcentaje' ? Math.round(precio * parseFloat(descuento) / 100) : parseFloat(descuento)
+                  const pU = Math.max(0, precio - descU)
+                  const total = precio * cantidad
+                  const totalDesc = pU * cantidad
+                  return { total, totalDesc, ahorro: total - totalDesc, pU }
+                }
+                const p2 = bundleForm.bundle_2_activo ? calcPreview(2, bundleForm.bundle_2_tipo, bundleForm.bundle_2_descuento) : null
+                const p3 = bundleForm.bundle_3_activo ? calcPreview(3, bundleForm.bundle_3_tipo, bundleForm.bundle_3_descuento) : null
+                const fmt = (n) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n)
+                return (
+                  <div className="rounded-lg bg-white border border-orange-100 px-3 py-2 text-xs space-y-1">
+                    <p className="font-semibold text-orange-700">Vista previa del cálculo</p>
+                    {p2 && <p className="text-slate-600">x2: <s className="text-slate-400">{fmt(p2.total)}</s> → <strong>{fmt(p2.totalDesc)}</strong> · Cada uno a {fmt(p2.pU)} · Ahorras {fmt(p2.ahorro)}</p>}
+                    {p3 && <p className="text-slate-600">x3: <s className="text-slate-400">{fmt(p3.total)}</s> → <strong>{fmt(p3.totalDesc)}</strong> · Cada uno a {fmt(p3.pU)} · Ahorras {fmt(p3.ahorro)}</p>}
+                  </div>
+                )
+              })()}
+
               <button
                 type="button"
                 onClick={guardarBundle}

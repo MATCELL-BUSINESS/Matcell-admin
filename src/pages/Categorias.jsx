@@ -71,7 +71,9 @@ export default function Categorias() {
   function openCategoriaModal(categoria = null) {
     setCategoriaError('')
     setCategoriaForm(
-      categoria ? { nombre: categoria.nombre, slug: categoria.slug } : { nombre: '', slug: '' }
+      categoria
+        ? { nombre: categoria.nombre, slug: categoria.slug, bundle_descuento_x2: categoria.bundle_descuento_x2 ?? 0, bundle_descuento_x3: categoria.bundle_descuento_x3 ?? 0 }
+        : { nombre: '', slug: '', bundle_descuento_x2: 0, bundle_descuento_x3: 0 }
     )
     setCategoriaModal({ open: true, categoria })
   }
@@ -101,10 +103,14 @@ export default function Categorias() {
 
     setCategoriaSubmitting(true)
     try {
+      const bundlePayload = {
+        bundle_descuento_x2: Number(categoriaForm.bundle_descuento_x2) || 0,
+        bundle_descuento_x3: Number(categoriaForm.bundle_descuento_x3) || 0,
+      }
       if (categoriaModal.categoria) {
         const { error: updateError } = await supabase
           .from('categorias')
-          .update({ nombre, slug })
+          .update({ nombre, slug, ...bundlePayload })
           .eq('id', categoriaModal.categoria.id)
         if (updateError) throw updateError
       } else {
@@ -112,7 +118,7 @@ export default function Categorias() {
           categorias.reduce((max, c) => Math.max(max, c.orden || 0), 0) + 1
         const { error: insertError } = await supabase
           .from('categorias')
-          .insert({ nombre, slug, activa: true, orden: siguienteOrden })
+          .insert({ nombre, slug, activa: true, orden: siguienteOrden, ...bundlePayload })
         if (insertError) throw insertError
       }
       closeCategoriaModal()
@@ -305,6 +311,35 @@ export default function Categorias() {
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               placeholder="ej-accesorios"
             />
+          </div>
+
+          <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-3">
+            <p className="text-xs font-semibold text-orange-800">Descuentos de bundle por categoría</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">Dto. bundle x2 (COP/unidad)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={categoriaForm.bundle_descuento_x2}
+                  onChange={(e) => setCategoriaForm((prev) => ({ ...prev, bundle_descuento_x2: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  placeholder="Ej. 3000"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">Dto. bundle x3 (COP/unidad)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={categoriaForm.bundle_descuento_x3}
+                  onChange={(e) => setCategoriaForm((prev) => ({ ...prev, bundle_descuento_x3: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  placeholder="Ej. 5000"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">Aplica cuando el cliente combina productos de distintos modelos de esta categoría. Si lleva el mismo modelo, prevalece el descuento individual del producto.</p>
           </div>
 
           {categoriaError && (
