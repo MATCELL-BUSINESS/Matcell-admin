@@ -86,6 +86,14 @@ export default function Productos() {
   const [fotosActivo, setFotosActivo] = useState([])
   const [subiendoFoto, setSubiendoFoto] = useState(false)
 
+  const BUNDLE_VACIO = {
+    bundle_2_activo: false, bundle_2_tipo: 'porcentaje', bundle_2_descuento: '',
+    bundle_3_activo: false, bundle_3_tipo: 'porcentaje', bundle_3_descuento: '',
+  }
+  const [bundleForm, setBundleForm] = useState(BUNDLE_VACIO)
+  const [bundleId, setBundleId] = useState(null)
+  const [guardandoBundle, setGuardandoBundle] = useState(false)
+
   const [variantesActivo, setVariantesActivo] = useState([])
   const [nuevaVariante, setNuevaVariante] = useState({
     modelo_compatible: '',
@@ -181,6 +189,8 @@ export default function Productos() {
     setVariantesBulk({ modelos: '', colores: '' })
     setColorFotoNueva('')
     setCaracteristicaInput('')
+    setBundleForm(BUNDLE_VACIO)
+    setBundleId(null)
     setModal({ open: true, producto: null })
   }
 
@@ -211,8 +221,10 @@ export default function Productos() {
     setCaracteristicaInput('')
     setVariantesBulk({ modelos: '', colores: '' })
     setColorFotoNueva('')
+    setBundleForm(BUNDLE_VACIO)
+    setBundleId(null)
     setModal({ open: true, producto })
-    await cargarVariantes(producto.id)
+    await Promise.all([cargarVariantes(producto.id), cargarBundle(producto.id)])
   }
 
   function cerrarModal() {
@@ -220,6 +232,8 @@ export default function Productos() {
     setProductoIdActivo(null)
     setFotosActivo([])
     setVariantesActivo([])
+    setBundleForm(BUNDLE_VACIO)
+    setBundleId(null)
   }
 
   function actualizarCampo(campo, valor) {
@@ -332,6 +346,62 @@ export default function Productos() {
       ...prev,
       caracteristicas: prev.caracteristicas.filter((_, i) => i !== indice),
     }))
+  }
+
+  // ---- Bundle (solo accesorios) ----
+
+  async function cargarBundle(productoId) {
+    try {
+      const { data, error } = await supabase
+        .from('bundles')
+        .select('*')
+        .eq('producto_id', productoId)
+        .maybeSingle()
+      if (error) throw error
+      if (data) {
+        setBundleId(data.id)
+        setBundleForm({
+          bundle_2_activo: data.bundle_2_activo ?? false,
+          bundle_2_tipo: data.bundle_2_tipo ?? 'porcentaje',
+          bundle_2_descuento: data.bundle_2_descuento != null ? String(data.bundle_2_descuento) : '',
+          bundle_3_activo: data.bundle_3_activo ?? false,
+          bundle_3_tipo: data.bundle_3_tipo ?? 'porcentaje',
+          bundle_3_descuento: data.bundle_3_descuento != null ? String(data.bundle_3_descuento) : '',
+        })
+      }
+    } catch (err) {
+      setFormError('No se pudo cargar el bundle. ' + err.message)
+    }
+  }
+
+  async function guardarBundle() {
+    if (!productoIdActivo) return
+    setGuardandoBundle(true)
+    setFormError('')
+    try {
+      const payload = {
+        producto_id: productoIdActivo,
+        activo: true,
+        bundle_2_activo: bundleForm.bundle_2_activo,
+        bundle_2_tipo: bundleForm.bundle_2_activo ? bundleForm.bundle_2_tipo : null,
+        bundle_2_descuento: bundleForm.bundle_2_activo && bundleForm.bundle_2_descuento !== '' ? parseFloat(bundleForm.bundle_2_descuento) : null,
+        bundle_3_activo: bundleForm.bundle_3_activo,
+        bundle_3_tipo: bundleForm.bundle_3_activo ? bundleForm.bundle_3_tipo : null,
+        bundle_3_descuento: bundleForm.bundle_3_activo && bundleForm.bundle_3_descuento !== '' ? parseFloat(bundleForm.bundle_3_descuento) : null,
+      }
+      if (bundleId) {
+        const { error } = await supabase.from('bundles').update(payload).eq('id', bundleId)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase.from('bundles').insert(payload).select('id').single()
+        if (error) throw error
+        setBundleId(data.id)
+      }
+    } catch (err) {
+      setFormError('No se pudo guardar el bundle. ' + err.message)
+    } finally {
+      setGuardandoBundle(false)
+    }
   }
 
   // ---- Variantes (color + stock, y modelo compatible para accesorios) ----
@@ -877,6 +947,89 @@ export default function Productos() {
                   + Agregar
                 </button>
               </div>
+            </div>
+          )}
+
+          {esAccesorios && productoIdActivo && (
+            <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 space-y-4">
+              <p className="text-sm font-semibold text-orange-800">Ofertas de bundle</p>
+
+              {/* Bundle x2 */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={bundleForm.bundle_2_activo}
+                    onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_2_activo: e.target.checked }))}
+                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100"
+                  />
+                  Activar oferta por llevar 2
+                </label>
+                {bundleForm.bundle_2_activo && (
+                  <div className="flex items-center gap-2 pl-6">
+                    <select
+                      value={bundleForm.bundle_2_tipo}
+                      onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_2_tipo: e.target.value }))}
+                      className="rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                    >
+                      <option value="porcentaje">% descuento</option>
+                      <option value="valor">$ descuento fijo</option>
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      value={bundleForm.bundle_2_descuento}
+                      onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_2_descuento: e.target.value }))}
+                      className="w-28 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                      placeholder={bundleForm.bundle_2_tipo === 'porcentaje' ? 'Ej. 15' : 'Ej. 5000'}
+                    />
+                    <span className="text-xs text-slate-500">{bundleForm.bundle_2_tipo === 'porcentaje' ? '%' : 'COP'} por unidad</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bundle x3 */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={bundleForm.bundle_3_activo}
+                    onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_3_activo: e.target.checked }))}
+                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100"
+                  />
+                  Activar oferta por llevar 3
+                </label>
+                {bundleForm.bundle_3_activo && (
+                  <div className="flex items-center gap-2 pl-6">
+                    <select
+                      value={bundleForm.bundle_3_tipo}
+                      onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_3_tipo: e.target.value }))}
+                      className="rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                    >
+                      <option value="porcentaje">% descuento</option>
+                      <option value="valor">$ descuento fijo</option>
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      value={bundleForm.bundle_3_descuento}
+                      onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_3_descuento: e.target.value }))}
+                      className="w-28 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                      placeholder={bundleForm.bundle_3_tipo === 'porcentaje' ? 'Ej. 20' : 'Ej. 8000'}
+                    />
+                    <span className="text-xs text-slate-500">{bundleForm.bundle_3_tipo === 'porcentaje' ? '%' : 'COP'} por unidad</span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={guardarBundle}
+                disabled={guardandoBundle}
+                className="rounded-lg bg-orange-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-orange-700 disabled:opacity-60"
+              >
+                {guardandoBundle ? 'Guardando…' : 'Guardar bundle'}
+              </button>
             </div>
           )}
 
