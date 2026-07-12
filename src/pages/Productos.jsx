@@ -88,6 +88,7 @@ export default function Productos() {
   const [productoIdActivo, setProductoIdActivo] = useState(null)
   const [fotosActivo, setFotosActivo] = useState([])
   const [subiendoFoto, setSubiendoFoto] = useState(false)
+  const [dragSobreFotos, setDragSobreFotos] = useState(false)
 
   const BUNDLE_VACIO = {
     bundle_2_activo: false, bundle_2_tipo: 'porcentaje', bundle_2_descuento: '',
@@ -557,9 +558,7 @@ export default function Productos() {
 
   // ---- Fotos ----
 
-  async function handleSubirFoto(e) {
-    const archivo = e.target.files?.[0]
-    e.target.value = ''
+  async function subirArchivoFoto(archivo) {
     if (!archivo || !productoIdActivo) return
 
     setSubiendoFoto(true)
@@ -597,6 +596,19 @@ export default function Productos() {
     } finally {
       setSubiendoFoto(false)
     }
+  }
+
+  function handleSubirFoto(e) {
+    const archivo = e.target.files?.[0]
+    e.target.value = ''
+    subirArchivoFoto(archivo)
+  }
+
+  function handleDropFotos(e) {
+    e.preventDefault()
+    setDragSobreFotos(false)
+    const archivo = e.dataTransfer.files?.[0]
+    if (archivo && archivo.type.startsWith('image/')) subirArchivoFoto(archivo)
   }
 
   async function handleEliminarFoto(foto) {
@@ -1165,36 +1177,60 @@ export default function Productos() {
               </p>
             ) : (
               <div>
-                <div className="mb-3 flex flex-wrap gap-3">
-                  {fotosActivo.map((foto) => (
-                    <div key={foto.id} className="group relative h-20 w-20">
-                      <img src={foto.url} alt="" className="h-20 w-20 rounded-lg border border-slate-200 object-cover" />
-                      <span className="absolute bottom-0 left-0 right-0 truncate rounded-b-lg bg-black/60 px-1 py-0.5 text-center text-[10px] text-white">
-                        {foto.color || 'General'}
-                      </span>
-                      <button type="button" onClick={() => handleEliminarFoto(foto)}
-                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow hover:bg-red-700"
-                        aria-label="Eliminar">✕</button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-wrap items-end gap-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">Color de la foto</label>
-                    <select value={colorFotoNueva} onChange={(e) => setColorFotoNueva(e.target.value)}
-                      className="w-44 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500">
-                      <option value="">General (sin color)</option>
-                      {[...new Set(variantesActivo.map((v) => v.color).filter(Boolean))].map((color) => (
-                        <option key={color} value={color}>{color}</option>
-                      ))}
-                    </select>
+                {/* Miniaturas existentes */}
+                {fotosActivo.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-3">
+                    {fotosActivo.map((foto) => (
+                      <div key={foto.id} className="group relative h-30 w-30" style={{ width: 120, height: 120 }}>
+                        <div className="flex h-full w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-100">
+                          <img src={foto.url} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
+                        </div>
+                        <span className="absolute bottom-0 left-0 right-0 truncate rounded-b-lg bg-black/60 px-1 py-0.5 text-center text-[10px] text-white">
+                          {foto.color || 'General'}
+                        </span>
+                        <button type="button" onClick={() => handleEliminarFoto(foto)}
+                          className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow hover:bg-red-700"
+                          aria-label="Eliminar">✕</button>
+                      </div>
+                    ))}
                   </div>
-                  <label className="inline-block cursor-pointer rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100">
-                    {subiendoFoto ? 'Subiendo…' : '+ Subir foto'}
-                    <input type="file" accept="image/*" capture="environment"
-                      onChange={handleSubirFoto} disabled={subiendoFoto} className="hidden" />
-                  </label>
+                )}
+
+                {/* Selector de color */}
+                <div className="mb-3">
+                  <label className="mb-1 block text-xs font-medium text-slate-600">Color de la foto</label>
+                  <select value={colorFotoNueva} onChange={(e) => setColorFotoNueva(e.target.value)}
+                    className="w-44 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500">
+                    <option value="">General (sin color)</option>
+                    {[...new Set(variantesActivo.map((v) => v.color).filter(Boolean))].map((color) => (
+                      <option key={color} value={color}>{color}</option>
+                    ))}
+                  </select>
                 </div>
+
+                {/* Zona drag & drop + botón */}
+                <label
+                  className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 text-sm transition-colors ${
+                    dragSobreFotos
+                      ? 'border-red-400 bg-red-50 text-red-600'
+                      : 'border-slate-300 bg-slate-50 text-slate-500 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-600'
+                  }`}
+                  onDragOver={(e) => { e.preventDefault(); setDragSobreFotos(true) }}
+                  onDragLeave={() => setDragSobreFotos(false)}
+                  onDrop={handleDropFotos}
+                >
+                  {subiendoFoto ? (
+                    <span>Subiendo…</span>
+                  ) : (
+                    <>
+                      <span className="text-lg">📷</span>
+                      <span>Arrastra las fotos aquí o haz clic para seleccionar</span>
+                      <span className="text-xs opacity-60">PNG, JPG, WEBP</span>
+                    </>
+                  )}
+                  <input type="file" accept="image/*" onChange={handleSubirFoto}
+                    disabled={subiendoFoto} className="hidden" />
+                </label>
               </div>
             )}
           </div>
