@@ -24,10 +24,13 @@ const FORM_VACIO = {
   precio: '',
   precio_anterior: '',
   en_oferta: false,
+  modelo: '',
   almacenamiento: '',
   pantalla: '',
   procesador: '',
   camara: '',
+  bateria: '',
+  so: '',
   material: '',
   descripcion: '',
   incluye_regalo: false,
@@ -175,7 +178,18 @@ export default function Productos() {
   const categoriaFormSlug = categoriaPorId[form.categoria_id]?.slug
   const esCelular = SLUGS_CELULAR.includes(categoriaFormSlug)
   const esAccesorios = categoriaFormSlug === SLUG_ACCESORIOS
+  const esOtro = !!form.categoria_id && !esCelular && !esAccesorios
   const permiteSeminuevo = categoriaFormSlug === 'iphone'
+
+  // Autogenera el nombre del producto para equipos móviles
+  useEffect(() => {
+    if (!esCelular) return
+    const partes = [form.modelo?.trim(), form.almacenamiento?.trim()].filter(Boolean)
+    if (!partes.length) return
+    const sufijo = form.estado === 'seminuevo' ? '(Seminuevo)' : ''
+    setForm((prev) => ({ ...prev, nombre: [...partes, sufijo].filter(Boolean).join(' ') }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.modelo, form.almacenamiento, form.estado, esCelular])
 
   // ---- Crear / editar producto ----
 
@@ -206,10 +220,13 @@ export default function Productos() {
       precio_anterior:
         producto.precio_anterior != null ? String(Math.round(producto.precio_anterior)) : '',
       en_oferta: !!producto.en_oferta,
+      modelo: producto.modelo || '',
       almacenamiento: producto.almacenamiento || '',
       pantalla: producto.pantalla || '',
       procesador: producto.procesador || '',
       camara: producto.camara || '',
+      bateria: producto.bateria || '',
+      so: producto.so || '',
       material: producto.material || '',
       descripcion: producto.descripcion || '',
       incluye_regalo: !!producto.incluye_regalo,
@@ -274,14 +291,17 @@ export default function Productos() {
       subcategoria_id: form.subcategoria_id || null,
       nombre: form.nombre.trim(),
       estado: permiteSeminuevo ? form.estado : 'nuevo',
-      grado_interno: esCelular ? form.grado_interno || null : null,
+      grado_interno: esCelular && form.estado === 'seminuevo' ? form.grado_interno || null : null,
       precio: parseInt(form.precio, 10),
       precio_anterior: form.precio_anterior === '' ? null : parseInt(form.precio_anterior, 10),
       en_oferta: form.en_oferta,
+      modelo: esCelular ? form.modelo || null : null,
       almacenamiento: esCelular ? form.almacenamiento || null : null,
       pantalla: esCelular ? form.pantalla || null : null,
       procesador: esCelular ? form.procesador || null : null,
       camara: esCelular ? form.camara || null : null,
+      bateria: esCelular ? form.bateria || null : null,
+      so: esCelular ? form.so || null : null,
       material: esCelular ? form.material || null : null,
       descripcion: form.descripcion || null,
       incluye_regalo: form.incluye_regalo,
@@ -729,200 +749,199 @@ export default function Productos() {
         open={modal.open}
         title={modal.producto ? 'Editar producto' : 'Nuevo producto'}
         onClose={cerrarModal}
-        maxWidth="max-w-2xl"
+        maxWidth="max-w-3xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Categoría</label>
-              <select
-                required
-                value={form.categoria_id}
-                onChange={(e) => actualizarCampo('categoria_id', e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              >
-                <option value="">Selecciona…</option>
-                {categorias.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <form onSubmit={handleSubmit}>
 
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Subcategoría</label>
-              <select
-                value={form.subcategoria_id}
-                onChange={(e) => actualizarCampo('subcategoria_id', e.target.value)}
-                disabled={!form.categoria_id}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50"
-              >
-                <option value="">Sin subcategoría</option>
-                {subcategoriasDeForm.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Nombre</label>
-            <input
-              required
-              value={form.nombre}
-              onChange={(e) => actualizarCampo('nombre', e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              placeholder="Ej. iPhone 13 128GB"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            {permiteSeminuevo && (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Estado</label>
-                <select
-                  value={form.estado}
-                  onChange={(e) => actualizarCampo('estado', e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                >
-                  {ESTADOS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {esCelular && (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Grado interno</label>
-                <select
-                  value={form.grado_interno}
-                  onChange={(e) => actualizarCampo('grado_interno', e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                >
-                  <option value="">Sin grado</option>
-                  {GRADOS.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Precio</label>
-              <input
-                required
-                type="text"
-                inputMode="numeric"
-                value={formatMiles(form.precio)}
-                onChange={(e) => actualizarPrecio('precio', e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                placeholder="0"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Precio anterior</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={formatMiles(form.precio_anterior)}
-                onChange={(e) => actualizarPrecio('precio_anterior', e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                placeholder="0"
-              />
-            </div>
-
-            <div className="flex items-end pb-2">
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.en_oferta}
-                  onChange={(e) => actualizarCampo('en_oferta', e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100"
-                />
-                En oferta
-              </label>
-            </div>
-          </div>
-
-          {esCelular && (
+          {/* ── Categoría ── */}
+          <div className="pb-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Categoría</p>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Almacenamiento</label>
-                <input
-                  value={form.almacenamiento}
-                  onChange={(e) => actualizarCampo('almacenamiento', e.target.value)}
+                <label className="mb-1 block text-sm font-medium text-slate-700">Categoría *</label>
+                <select
+                  required
+                  value={form.categoria_id}
+                  onChange={(e) => actualizarCampo('categoria_id', e.target.value)}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  placeholder="Ej. 128GB"
-                />
+                >
+                  <option value="">Selecciona…</option>
+                  {categorias.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Pantalla</label>
-                <input
-                  value={form.pantalla}
-                  onChange={(e) => actualizarCampo('pantalla', e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  placeholder="Ej. 6.1'' OLED"
-                />
+                <label className="mb-1 block text-sm font-medium text-slate-700">Subcategoría</label>
+                <select
+                  value={form.subcategoria_id}
+                  onChange={(e) => actualizarCampo('subcategoria_id', e.target.value)}
+                  disabled={!form.categoria_id}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50"
+                >
+                  <option value="">Sin subcategoría</option>
+                  {subcategoriasDeForm.map((s) => (
+                    <option key={s.id} value={s.id}>{s.nombre}</option>
+                  ))}
+                </select>
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Procesador</label>
-                <input
-                  value={form.procesador}
-                  onChange={(e) => actualizarCampo('procesador', e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  placeholder="Ej. A15 Bionic"
-                />
+            </div>
+          </div>
+
+          {/* ── Tipo A: Equipo móvil ── */}
+          {esCelular && (
+            <div className="border-t border-slate-100 py-5">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Equipo</p>
+              <div className="grid grid-cols-2 gap-4">
+                {permiteSeminuevo && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">Estado</label>
+                    <select
+                      value={form.estado}
+                      onChange={(e) => actualizarCampo('estado', e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    >
+                      {ESTADOS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {form.estado === 'seminuevo' && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">Grado interno</label>
+                    <select
+                      value={form.grado_interno}
+                      onChange={(e) => actualizarCampo('grado_interno', e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    >
+                      <option value="">Sin grado</option>
+                      {GRADOS.map((g) => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Cámara</label>
+              <div className="mt-4">
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Nombre del producto
+                  <span className="ml-2 text-xs font-normal text-slate-400">autogenerado de modelo + almacenamiento + estado</span>
+                </label>
                 <input
-                  value={form.camara}
-                  onChange={(e) => actualizarCampo('camara', e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  placeholder="Ej. 12MP dual"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Material</label>
-                <input
-                  value={form.material}
-                  onChange={(e) => actualizarCampo('material', e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  placeholder="Ej. Aluminio"
+                  required
+                  value={form.nombre}
+                  onChange={(e) => actualizarCampo('nombre', e.target.value)}
+                  className="w-full rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  placeholder="Se completa automáticamente al llenar las especificaciones"
                 />
               </div>
             </div>
           )}
 
+          {/* ── Tipo B/C: Nombre manual ── */}
+          {!esCelular && (
+            <div className="border-t border-slate-100 py-5">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Nombre del producto</p>
+              <input
+                required
+                value={form.nombre}
+                onChange={(e) => actualizarCampo('nombre', e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                placeholder={esAccesorios ? 'Ej. Forro Silicone Case con MagSafe' : 'Nombre del producto'}
+              />
+            </div>
+          )}
+
+          {/* ── Tipo A: Especificaciones técnicas ── */}
+          {esCelular && (
+            <div className="border-t border-slate-100 py-5">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Especificaciones técnicas</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Modelo</label>
+                  <input
+                    value={form.modelo}
+                    onChange={(e) => actualizarCampo('modelo', e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    placeholder="Ej. iPhone 13"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Almacenamiento</label>
+                  <input
+                    value={form.almacenamiento}
+                    onChange={(e) => actualizarCampo('almacenamiento', e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    placeholder="Ej. 128GB"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Pantalla</label>
+                  <input
+                    value={form.pantalla}
+                    onChange={(e) => actualizarCampo('pantalla', e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    placeholder="Ej. 6.1'' OLED"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Procesador</label>
+                  <input
+                    value={form.procesador}
+                    onChange={(e) => actualizarCampo('procesador', e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    placeholder="Ej. A15 Bionic"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Cámara</label>
+                  <input
+                    value={form.camara}
+                    onChange={(e) => actualizarCampo('camara', e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    placeholder="Ej. 12MP dual"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Batería</label>
+                  <input
+                    value={form.bateria}
+                    onChange={(e) => actualizarCampo('bateria', e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    placeholder="Ej. 3227 mAh"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Sistema operativo</label>
+                  <input
+                    value={form.so}
+                    onChange={(e) => actualizarCampo('so', e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    placeholder="Ej. iOS 17"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Material</label>
+                  <input
+                    value={form.material}
+                    onChange={(e) => actualizarCampo('material', e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    placeholder="Ej. Aluminio y vidrio"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Tipo B: Características ── */}
           {esAccesorios && (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Características</label>
+            <div className="border-t border-slate-100 py-5">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Características</p>
               <div className="mb-2 flex flex-wrap gap-2">
                 {form.caracteristicas.map((c, i) => (
-                  <span
-                    key={i}
-                    className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700"
-                  >
+                  <span key={i} className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
                     {c}
-                    <button
-                      type="button"
-                      onClick={() => eliminarCaracteristica(i)}
-                      className="text-slate-400 hover:text-slate-600"
-                      aria-label="Eliminar característica"
-                    >
-                      ✕
-                    </button>
+                    <button type="button" onClick={() => eliminarCaracteristica(i)}
+                      className="text-slate-400 hover:text-slate-600" aria-label="Eliminar">✕</button>
                   </span>
                 ))}
               </div>
@@ -930,174 +949,69 @@ export default function Productos() {
                 <input
                   value={caracteristicaInput}
                   onChange={(e) => setCaracteristicaInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      agregarCaracteristica()
-                    }
-                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarCaracteristica() } }}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                   placeholder="Ej. Cancelación de ruido activa"
                 />
-                <button
-                  type="button"
-                  onClick={agregarCaracteristica}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
-                >
+                <button type="button" onClick={agregarCaracteristica}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100">
                   + Agregar
                 </button>
               </div>
             </div>
           )}
 
-          {esAccesorios && productoIdActivo && (
-            <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 space-y-4">
-              <p className="text-sm font-semibold text-orange-800">Ofertas de bundle</p>
-
-              {/* Bundle x2 */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={bundleForm.bundle_2_activo}
-                    onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_2_activo: e.target.checked }))}
-                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100"
-                  />
-                  Activar oferta por llevar 2
-                </label>
-                {bundleForm.bundle_2_activo && (
-                  <div className="flex items-center gap-2 pl-6">
-                    <select
-                      value={bundleForm.bundle_2_tipo}
-                      onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_2_tipo: e.target.value }))}
-                      className="rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
-                    >
-                      <option value="porcentaje">% descuento</option>
-                      <option value="valor">$ descuento fijo</option>
-                    </select>
-                    <input
-                      type="number"
-                      min="0"
-                      value={bundleForm.bundle_2_descuento}
-                      onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_2_descuento: e.target.value }))}
-                      className="w-28 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
-                      placeholder={bundleForm.bundle_2_tipo === 'porcentaje' ? 'Ej. 15' : 'Ej. 5000'}
-                    />
-                    <span className="text-xs text-slate-500">{bundleForm.bundle_2_tipo === 'porcentaje' ? '%' : 'COP'} por unidad</span>
-                  </div>
-                )}
+          {/* ── Precio ── */}
+          <div className="border-t border-slate-100 py-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Precio</p>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Precio *</label>
+                <input
+                  required
+                  type="text"
+                  inputMode="numeric"
+                  value={formatMiles(form.precio)}
+                  onChange={(e) => actualizarPrecio('precio', e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  placeholder="0"
+                />
               </div>
-
-              {/* Bundle x3 */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={bundleForm.bundle_3_activo}
-                    onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_3_activo: e.target.checked }))}
-                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100"
-                  />
-                  Activar oferta por llevar 3
-                </label>
-                {bundleForm.bundle_3_activo && (
-                  <div className="flex items-center gap-2 pl-6">
-                    <select
-                      value={bundleForm.bundle_3_tipo}
-                      onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_3_tipo: e.target.value }))}
-                      className="rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
-                    >
-                      <option value="porcentaje">% descuento</option>
-                      <option value="valor">$ descuento fijo</option>
-                    </select>
-                    <input
-                      type="number"
-                      min="0"
-                      value={bundleForm.bundle_3_descuento}
-                      onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_3_descuento: e.target.value }))}
-                      className="w-28 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
-                      placeholder={bundleForm.bundle_3_tipo === 'porcentaje' ? 'Ej. 20' : 'Ej. 8000'}
-                    />
-                    <span className="text-xs text-slate-500">{bundleForm.bundle_3_tipo === 'porcentaje' ? '%' : 'COP'} por unidad</span>
-                  </div>
-                )}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Precio anterior</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formatMiles(form.precio_anterior)}
+                  onChange={(e) => actualizarPrecio('precio_anterior', e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  placeholder="0"
+                />
               </div>
-
-              {/* Preview dinámico del cálculo */}
-              {form.precio && (bundleForm.bundle_2_activo || bundleForm.bundle_3_activo) && (() => {
-                const precio = parseInt(form.precio, 10)
-                const calcPreview = (cantidad, tipo, descuento) => {
-                  if (!descuento) return null
-                  const descU = tipo === 'porcentaje' ? Math.round(precio * parseFloat(descuento) / 100) : parseFloat(descuento)
-                  const pU = Math.max(0, precio - descU)
-                  const total = precio * cantidad
-                  const totalDesc = pU * cantidad
-                  return { total, totalDesc, ahorro: total - totalDesc, pU }
-                }
-                const p2 = bundleForm.bundle_2_activo ? calcPreview(2, bundleForm.bundle_2_tipo, bundleForm.bundle_2_descuento) : null
-                const p3 = bundleForm.bundle_3_activo ? calcPreview(3, bundleForm.bundle_3_tipo, bundleForm.bundle_3_descuento) : null
-                const fmt = (n) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n)
-                return (
-                  <div className="rounded-lg bg-white border border-orange-100 px-3 py-2 text-xs space-y-1">
-                    <p className="font-semibold text-orange-700">Vista previa del cálculo</p>
-                    {p2 && <p className="text-slate-600">x2: <s className="text-slate-400">{fmt(p2.total)}</s> → <strong>{fmt(p2.totalDesc)}</strong> · Cada uno a {fmt(p2.pU)} · Ahorras {fmt(p2.ahorro)}</p>}
-                    {p3 && <p className="text-slate-600">x3: <s className="text-slate-400">{fmt(p3.total)}</s> → <strong>{fmt(p3.totalDesc)}</strong> · Cada uno a {fmt(p3.pU)} · Ahorras {fmt(p3.ahorro)}</p>}
-                  </div>
-                )
-              })()}
-
-              <button
-                type="button"
-                onClick={guardarBundle}
-                disabled={guardandoBundle}
-                className="rounded-lg bg-orange-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-orange-700 disabled:opacity-60"
-              >
-                {guardandoBundle ? 'Guardando…' : 'Guardar bundle'}
-              </button>
+              <div className="flex items-end pb-2">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="checkbox" checked={form.en_oferta}
+                    onChange={(e) => actualizarCampo('en_oferta', e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100" />
+                  En oferta
+                </label>
+              </div>
             </div>
-          )}
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Descripción</label>
-            <textarea
-              rows={3}
-              value={form.descripcion}
-              onChange={(e) => actualizarCampo('descripcion', e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              placeholder="Detalles adicionales del producto…"
-            />
           </div>
 
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={form.incluye_regalo}
-                onChange={(e) => actualizarCampo('incluye_regalo', e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100"
-              />
-              Incluye regalo
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={form.destacado}
-                onChange={(e) => actualizarCampo('destacado', e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100"
-              />
-              Destacado
-            </label>
-          </div>
-
-          <div className="border-t border-slate-200 pt-4">
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Variantes (color, almacenamiento, precio y stock{esAccesorios ? ', con modelo compatible si aplica' : ''})
-            </label>
-            <p className="mb-2 text-xs text-slate-500">
-              Almacenamiento y precio son opcionales. Si el precio de una variante queda vacío, el sitio público usa el precio base del producto.
+          {/* ── Variantes ── */}
+          <div className="border-t border-slate-100 py-5">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Variantes</p>
+            <p className="mb-3 text-xs text-slate-500">
+              {esCelular
+                ? 'Almacenamiento + color + precio + stock. El precio de la variante sobreescribe el precio base.'
+                : esAccesorios
+                ? 'Compatibilidad + color + precio + stock. Deja compatibilidad vacía para un accesorio universal.'
+                : 'Color + precio + stock por variante.'}
             </p>
             {!productoIdActivo ? (
               <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-500">
-                Guarda el producto primero para poder administrar sus variantes.
+                Guarda el producto primero para administrar sus variantes.
               </p>
             ) : (
               <div className="space-y-3">
@@ -1106,7 +1020,7 @@ export default function Productos() {
                     <table className="w-full text-left text-sm">
                       <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                         <tr>
-                          {esAccesorios && <th className="px-3 py-2">Modelo compatible</th>}
+                          {esAccesorios && <th className="px-3 py-2">Compatible con</th>}
                           <th className="px-3 py-2">Color</th>
                           <th className="px-3 py-2">Almacenamiento</th>
                           <th className="px-3 py-2">Precio</th>
@@ -1123,62 +1037,41 @@ export default function Productos() {
                                   defaultValue={v.modelo_compatible || ''}
                                   onBlur={(e) => actualizarVariante(v, 'modelo_compatible', e.target.value.trim() || null)}
                                   className="w-full rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-brand-500"
-                                  placeholder="Sin modelo (aplica a todos)"
+                                  placeholder="Universal"
                                 />
                               </td>
                             )}
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-2">
-                                <input
-                                  type="color"
-                                  defaultValue={v.color_hex || '#000000'}
+                                <input type="color" defaultValue={v.color_hex || '#000000'}
                                   onChange={(e) => actualizarVariante(v, 'color_hex', e.target.value)}
-                                  className="h-8 w-8 shrink-0 cursor-pointer rounded border border-slate-200"
-                                  title="Color exacto para el sitio público"
-                                />
-                                <input
-                                  defaultValue={v.color}
+                                  className="h-8 w-8 shrink-0 cursor-pointer rounded border border-slate-200" />
+                                <input defaultValue={v.color}
                                   onBlur={(e) => actualizarVariante(v, 'color', e.target.value.trim())}
                                   className="w-full rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-brand-500"
-                                  placeholder="Ej. Azul medianoche"
-                                />
+                                  placeholder="Ej. Azul medianoche" />
                               </div>
                             </td>
                             <td className="px-3 py-2">
-                              <input
-                                defaultValue={v.almacenamiento || ''}
+                              <input defaultValue={v.almacenamiento || ''}
                                 onBlur={(e) => actualizarVariante(v, 'almacenamiento', e.target.value.trim() || null)}
                                 className="w-28 rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-brand-500"
-                                placeholder="Ej. 128GB"
-                              />
+                                placeholder="Ej. 128GB" />
                             </td>
                             <td className="px-3 py-2">
-                              <input
-                                type="number"
-                                min="0"
-                                defaultValue={v.precio ?? ''}
+                              <input type="number" min="0" defaultValue={v.precio ?? ''}
                                 onBlur={(e) => actualizarVariante(v, 'precio', e.target.value)}
                                 className="w-28 rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-brand-500"
-                                placeholder="Precio base"
-                              />
+                                placeholder="Precio base" />
                             </td>
                             <td className="px-3 py-2">
-                              <input
-                                type="number"
-                                min="0"
-                                defaultValue={v.stock}
+                              <input type="number" min="0" defaultValue={v.stock}
                                 onBlur={(e) => actualizarVariante(v, 'stock', e.target.value)}
-                                className="w-20 rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-brand-500"
-                              />
+                                className="w-20 rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-brand-500" />
                             </td>
                             <td className="px-3 py-2 text-right">
-                              <button
-                                type="button"
-                                onClick={() => eliminarVariante(v)}
-                                className="text-xs font-medium text-red-600 hover:underline"
-                              >
-                                Eliminar
-                              </button>
+                              <button type="button" onClick={() => eliminarVariante(v)}
+                                className="text-xs font-medium text-red-600 hover:underline">Eliminar</button>
                             </td>
                           </tr>
                         ))}
@@ -1190,12 +1083,10 @@ export default function Productos() {
                 <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
                   {esAccesorios && (
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">Modelo compatible</label>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">Compatible con</label>
                       <input
                         value={nuevaVariante.modelo_compatible}
-                        onChange={(e) =>
-                          setNuevaVariante((prev) => ({ ...prev, modelo_compatible: e.target.value }))
-                        }
+                        onChange={(e) => setNuevaVariante((prev) => ({ ...prev, modelo_compatible: e.target.value }))}
                         className="w-44 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
                         placeholder="Opcional"
                       />
@@ -1204,56 +1095,37 @@ export default function Productos() {
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Color</label>
                     <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={nuevaVariante.color_hex}
+                      <input type="color" value={nuevaVariante.color_hex}
                         onChange={(e) => setNuevaVariante((prev) => ({ ...prev, color_hex: e.target.value }))}
-                        className="h-9 w-9 shrink-0 cursor-pointer rounded border border-slate-300"
-                        title="Color exacto para el sitio público"
-                      />
-                      <input
-                        value={nuevaVariante.color}
+                        className="h-9 w-9 shrink-0 cursor-pointer rounded border border-slate-300" />
+                      <input value={nuevaVariante.color}
                         onChange={(e) => setNuevaVariante((prev) => ({ ...prev, color: e.target.value }))}
                         className="w-32 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
-                        placeholder="Ej. Azul medianoche"
-                      />
+                        placeholder="Ej. Negro" />
                     </div>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Almacenamiento</label>
-                    <input
-                      value={nuevaVariante.almacenamiento}
+                    <input value={nuevaVariante.almacenamiento}
                       onChange={(e) => setNuevaVariante((prev) => ({ ...prev, almacenamiento: e.target.value }))}
-                      className="w-28 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
-                      placeholder="Ej. 128GB"
-                    />
+                      className="w-24 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                      placeholder="128GB" />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Precio</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={nuevaVariante.precio}
+                    <input type="number" min="0" value={nuevaVariante.precio}
                       onChange={(e) => setNuevaVariante((prev) => ({ ...prev, precio: e.target.value }))}
                       className="w-28 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
-                      placeholder="Precio base"
-                    />
+                      placeholder="Precio base" />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Stock</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={nuevaVariante.stock}
+                    <input type="number" min="0" value={nuevaVariante.stock}
                       onChange={(e) => setNuevaVariante((prev) => ({ ...prev, stock: e.target.value }))}
-                      className="w-20 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
-                    />
+                      className="w-20 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500" />
                   </div>
-                  <button
-                    type="button"
-                    onClick={agregarVariante}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100"
-                  >
+                  <button type="button" onClick={agregarVariante}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100">
                     + Agregar variante
                   </button>
                 </div>
@@ -1261,33 +1133,22 @@ export default function Productos() {
                 {esAccesorios && (
                   <div className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-slate-300 p-3">
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Modelos (separados por coma)
-                      </label>
-                      <input
-                        value={variantesBulk.modelos}
+                      <label className="mb-1 block text-xs font-medium text-slate-600">Modelos (coma)</label>
+                      <input value={variantesBulk.modelos}
                         onChange={(e) => setVariantesBulk((prev) => ({ ...prev, modelos: e.target.value }))}
                         className="w-64 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
-                        placeholder="iPhone 13, iPhone 13 Pro Max"
-                      />
+                        placeholder="iPhone 13, iPhone 13 Pro" />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Colores (separados por coma)
-                      </label>
-                      <input
-                        value={variantesBulk.colores}
+                      <label className="mb-1 block text-xs font-medium text-slate-600">Colores (coma)</label>
+                      <input value={variantesBulk.colores}
                         onChange={(e) => setVariantesBulk((prev) => ({ ...prev, colores: e.target.value }))}
-                        className="w-56 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
-                        placeholder="Negro, Rosado, Azul"
-                      />
+                        className="w-48 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                        placeholder="Negro, Rosado" />
                     </div>
-                    <button
-                      type="button"
-                      onClick={generarCombinaciones}
-                      className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 transition-colors hover:bg-brand-100"
-                    >
-                      Generar combinaciones (stock en 0)
+                    <button type="button" onClick={generarCombinaciones}
+                      className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 transition-colors hover:bg-brand-100">
+                      Generar combinaciones
                     </button>
                   </div>
                 )}
@@ -1295,85 +1156,171 @@ export default function Productos() {
             )}
           </div>
 
-          <div className="border-t border-slate-200 pt-4">
-            <label className="mb-2 block text-sm font-medium text-slate-700">Fotos</label>
+          {/* ── Fotos ── */}
+          <div className="border-t border-slate-100 py-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Fotos</p>
             {!productoIdActivo ? (
               <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-500">
-                Guarda el producto primero para poder subir sus fotos.
+                Guarda el producto primero para subir fotos.
               </p>
             ) : (
               <div>
                 <div className="mb-3 flex flex-wrap gap-3">
                   {fotosActivo.map((foto) => (
                     <div key={foto.id} className="group relative h-20 w-20">
-                      <img
-                        src={foto.url}
-                        alt=""
-                        className="h-20 w-20 rounded-lg border border-slate-200 object-cover"
-                      />
+                      <img src={foto.url} alt="" className="h-20 w-20 rounded-lg border border-slate-200 object-cover" />
                       <span className="absolute bottom-0 left-0 right-0 truncate rounded-b-lg bg-black/60 px-1 py-0.5 text-center text-[10px] text-white">
                         {foto.color || 'General'}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleEliminarFoto(foto)}
-                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow transition-colors hover:bg-red-700"
-                        aria-label="Eliminar foto"
-                      >
-                        ✕
-                      </button>
+                      <button type="button" onClick={() => handleEliminarFoto(foto)}
+                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow hover:bg-red-700"
+                        aria-label="Eliminar">✕</button>
                     </div>
                   ))}
                 </div>
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Color de la foto</label>
-                    <select
-                      value={colorFotoNueva}
-                      onChange={(e) => setColorFotoNueva(e.target.value)}
-                      className="w-44 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
-                    >
+                    <select value={colorFotoNueva} onChange={(e) => setColorFotoNueva(e.target.value)}
+                      className="w-44 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500">
                       <option value="">General (sin color)</option>
                       {[...new Set(variantesActivo.map((v) => v.color).filter(Boolean))].map((color) => (
-                        <option key={color} value={color}>
-                          {color}
-                        </option>
+                        <option key={color} value={color}>{color}</option>
                       ))}
                     </select>
                   </div>
                   <label className="inline-block cursor-pointer rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100">
                     {subiendoFoto ? 'Subiendo…' : '+ Subir foto'}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleSubirFoto}
-                      disabled={subiendoFoto}
-                      className="hidden"
-                    />
+                    <input type="file" accept="image/*" capture="environment"
+                      onChange={handleSubirFoto} disabled={subiendoFoto} className="hidden" />
                   </label>
                 </div>
               </div>
             )}
           </div>
 
+          {/* ── Tipo B: Bundle (accesorios, solo si el producto ya fue guardado) ── */}
+          {esAccesorios && productoIdActivo && (
+            <div className="border-t border-slate-100 py-5">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Bundle</p>
+              <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 space-y-4">
+                <p className="text-xs text-orange-700">
+                  Descuentos por volumen que el cliente ve en la ficha del producto. Para 4 o más unidades se aplica automáticamente el descuento de x3.
+                </p>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" checked={bundleForm.bundle_2_activo}
+                      onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_2_activo: e.target.checked }))}
+                      className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100" />
+                    Activar oferta por llevar 2
+                  </label>
+                  {bundleForm.bundle_2_activo && (
+                    <div className="flex items-center gap-2 pl-6">
+                      <select value={bundleForm.bundle_2_tipo}
+                        onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_2_tipo: e.target.value }))}
+                        className="rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500">
+                        <option value="porcentaje">% descuento</option>
+                        <option value="valor">$ descuento fijo</option>
+                      </select>
+                      <input type="number" min="0" value={bundleForm.bundle_2_descuento}
+                        onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_2_descuento: e.target.value }))}
+                        className="w-28 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                        placeholder={bundleForm.bundle_2_tipo === 'porcentaje' ? 'Ej. 15' : 'Ej. 5000'} />
+                      <span className="text-xs text-slate-500">{bundleForm.bundle_2_tipo === 'porcentaje' ? '%' : 'COP'} por unidad</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" checked={bundleForm.bundle_3_activo}
+                      onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_3_activo: e.target.checked }))}
+                      className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100" />
+                    Activar oferta por llevar 3 <span className="text-xs text-slate-500">(aplica también para 4+)</span>
+                  </label>
+                  {bundleForm.bundle_3_activo && (
+                    <div className="flex items-center gap-2 pl-6">
+                      <select value={bundleForm.bundle_3_tipo}
+                        onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_3_tipo: e.target.value }))}
+                        className="rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500">
+                        <option value="porcentaje">% descuento</option>
+                        <option value="valor">$ descuento fijo</option>
+                      </select>
+                      <input type="number" min="0" value={bundleForm.bundle_3_descuento}
+                        onChange={(e) => setBundleForm((prev) => ({ ...prev, bundle_3_descuento: e.target.value }))}
+                        className="w-28 rounded border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                        placeholder={bundleForm.bundle_3_tipo === 'porcentaje' ? 'Ej. 20' : 'Ej. 8000'} />
+                      <span className="text-xs text-slate-500">{bundleForm.bundle_3_tipo === 'porcentaje' ? '%' : 'COP'} por unidad</span>
+                    </div>
+                  )}
+                </div>
+
+                {form.precio && (bundleForm.bundle_2_activo || bundleForm.bundle_3_activo) && (() => {
+                  const precio = parseInt(form.precio, 10)
+                  const calcPreview = (cantidad, tipo, descuento) => {
+                    if (!descuento) return null
+                    const descU = tipo === 'porcentaje' ? Math.round(precio * parseFloat(descuento) / 100) : parseFloat(descuento)
+                    const pU = Math.max(0, precio - descU)
+                    return { total: precio * cantidad, totalDesc: pU * cantidad, ahorro: (precio - pU) * cantidad, pU }
+                  }
+                  const p2 = bundleForm.bundle_2_activo ? calcPreview(2, bundleForm.bundle_2_tipo, bundleForm.bundle_2_descuento) : null
+                  const p3 = bundleForm.bundle_3_activo ? calcPreview(3, bundleForm.bundle_3_tipo, bundleForm.bundle_3_descuento) : null
+                  const fmt = (n) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n)
+                  return (
+                    <div className="rounded-lg bg-white border border-orange-100 px-3 py-2 text-xs space-y-1">
+                      <p className="font-semibold text-orange-700">Vista previa</p>
+                      {p2 && <p className="text-slate-600">x2: <s className="text-slate-400">{fmt(p2.total)}</s> → <strong>{fmt(p2.totalDesc)}</strong> · c/u {fmt(p2.pU)} · Ahorras {fmt(p2.ahorro)}</p>}
+                      {p3 && <p className="text-slate-600">x3+: <s className="text-slate-400">{fmt(p3.total)}</s> → <strong>{fmt(p3.totalDesc)}</strong> · c/u {fmt(p3.pU)} · Ahorras {fmt(p3.ahorro)}</p>}
+                    </div>
+                  )
+                })()}
+
+                <button type="button" onClick={guardarBundle} disabled={guardandoBundle}
+                  className="rounded-lg bg-orange-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-orange-700 disabled:opacity-60">
+                  {guardandoBundle ? 'Guardando…' : 'Guardar bundle'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Descripción y opciones ── */}
+          <div className="border-t border-slate-100 py-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Descripción y opciones</p>
+            <textarea
+              rows={3}
+              value={form.descripcion}
+              onChange={(e) => actualizarCampo('descripcion', e.target.value)}
+              className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              placeholder="Detalles adicionales del producto…"
+            />
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={form.incluye_regalo}
+                  onChange={(e) => actualizarCampo('incluye_regalo', e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100" />
+                Incluye regalo
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={form.destacado}
+                  onChange={(e) => actualizarCampo('destacado', e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-100" />
+                Destacado
+              </label>
+            </div>
+          </div>
+
           {formError && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{formError}</p>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={cerrarModal}
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
-            >
+          <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+            <button type="button" onClick={cerrarModal}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100">
               Cerrar
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
-            >
+            <button type="submit" disabled={submitting}
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60">
               {submitting ? 'Guardando…' : modal.producto ? 'Guardar cambios' : 'Crear y continuar'}
             </button>
           </div>
