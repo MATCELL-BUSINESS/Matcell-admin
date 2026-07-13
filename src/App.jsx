@@ -9,6 +9,7 @@ import Productos from './pages/Productos'
 import Pedidos from './pages/Pedidos'
 import Resenas from './pages/Resenas'
 import Usuarios from './pages/Usuarios'
+import Stock from './pages/Stock'
 import ConfiguracionEnvios from './pages/ConfiguracionEnvios'
 import ConfiguracionTienda from './pages/ConfiguracionTienda'
 
@@ -28,6 +29,7 @@ export default function App() {
               <Route path="/pedidos" element={<Pedidos />} />
               <Route path="/resenas" element={<Resenas />} />
               <Route path="/usuarios" element={<Usuarios />} />
+              <Route path="/stock" element={<Stock />} />
               <Route path="/envios" element={<ConfiguracionEnvios />} />
               <Route path="/configuracion-tienda" element={<ConfiguracionTienda />} />
             </Route>

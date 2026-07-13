@@ -9,6 +9,7 @@ const navItems = [
   { to: '/pedidos', label: 'Pedidos', icon: '🧾' },
   { to: '/resenas', label: 'Reseñas', icon: '⭐' },
   { to: '/usuarios', label: 'Usuarios', icon: '👥' },
+  { to: '/stock', label: 'Stock', icon: '🗃️' },
   { to: '/envios', label: 'Envíos', icon: '🚚' },
   { to: '/configuracion-tienda', label: 'Configuración', icon: '⚙️' },
 ]
