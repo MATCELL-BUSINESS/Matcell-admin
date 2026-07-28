@@ -1,23 +1,76 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
+
+const INTERVALO_MS = 60_000
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: '📊' },
   { to: '/categorias', label: 'Categorías', icon: '🗂️' },
   { to: '/productos', label: 'Productos', icon: '📦' },
-  { to: '/pedidos', label: 'Pedidos', icon: '🧾' },
-  { to: '/resenas', label: 'Reseñas', icon: '⭐' },
-  { to: '/usuarios', label: 'Usuarios', icon: '👥' },
+  { to: '/pedidos', label: 'Pedidos', icon: '🧾', badge: 'pedidos' },
+  { to: '/resenas', label: 'Reseñas', icon: '⭐', badge: 'resenas' },
+  { to: '/usuarios', label: 'Usuarios', icon: '👥', badge: 'usuarios' },
   { to: '/stock', label: 'Stock', icon: '🗃️' },
   { to: '/envios', label: 'Envíos', icon: '🚚' },
   { to: '/configuracion-tienda', label: 'Configuración', icon: '⚙️' },
 ]
 
+function Badge({ count }) {
+  if (!count) return null
+  return (
+    <span
+      className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold leading-none text-white"
+      style={{ backgroundColor: '#FF2D00' }}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
+function useBadges() {
+  const [badges, setBadges] = useState({ resenas: 0, pedidos: 0, usuarios: 0 })
+  const timerRef = useRef(null)
+
+  async function fetchBadges() {
+    const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const [resenasRes, pedidosRes, usuariosRes] = await Promise.all([
+      supabase
+        .from('resenas')
+        .select('id', { count: 'exact', head: true })
+        .eq('estado', 'pendiente'),
+      supabase
+        .from('pedidos')
+        .select('id', { count: 'exact', head: true })
+        .eq('estado_pago', 'aprobado')
+        .gte('creado_en', hace24h),
+      supabase
+        .from('perfiles')
+        .select('id', { count: 'exact', head: true })
+        .gte('creado_en', hace24h),
+    ])
+    setBadges({
+      resenas: resenasRes.count ?? 0,
+      pedidos: pedidosRes.count ?? 0,
+      usuarios: usuariosRes.count ?? 0,
+    })
+  }
+
+  useEffect(() => {
+    fetchBadges()
+    timerRef.current = setInterval(fetchBadges, INTERVALO_MS)
+    return () => clearInterval(timerRef.current)
+  }, [])
+
+  return badges
+}
+
 export default function Layout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [sidebarAbierto, setSidebarAbierto] = useState(false)
+  const badges = useBadges()
 
   async function handleSignOut() {
     await signOut()
@@ -57,6 +110,7 @@ export default function Layout() {
             >
               <span aria-hidden="true">{item.icon}</span>
               {item.label}
+              {item.badge && <Badge count={badges[item.badge]} />}
             </NavLink>
           ))}
         </nav>
@@ -84,13 +138,11 @@ export default function Layout() {
       {/* Drawer móvil — overlay + panel lateral */}
       {sidebarAbierto && (
         <div className="fixed inset-0 z-40 md:hidden">
-          {/* Overlay oscuro */}
           <div
             className="absolute inset-0 bg-slate-900/50"
             onClick={cerrarSidebar}
             aria-hidden="true"
           />
-          {/* Panel lateral */}
           <aside className="absolute left-0 top-0 flex h-full w-64 flex-col justify-between bg-white shadow-xl">
             {sidebarContenido}
           </aside>
