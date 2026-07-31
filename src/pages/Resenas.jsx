@@ -49,7 +49,7 @@ export default function Resenas() {
   const [fechaEdits, setFechaEdits] = useState({})
   const [guardandoFechaId, setGuardandoFechaId] = useState(null)
   const [modalEditar, setModalEditar] = useState({ open: false, resena: null })
-  const [formEdit, setFormEdit] = useState({ nombre_cliente: '', ciudad: '', comentario: '', calificacion: 5 })
+  const [formEdit, setFormEdit] = useState({ nombre_cliente: '', ciudad: '', comentario: '', calificacion: 5, producto_id: '' })
   const [guardandoEdicion, setGuardandoEdicion] = useState(false)
   const [errorEdicion, setErrorEdicion] = useState('')
 
@@ -110,6 +110,7 @@ export default function Resenas() {
       ciudad: resena.ciudad || '',
       comentario: resena.comentario || '',
       calificacion: resena.calificacion || 5,
+      producto_id: resena.producto_id || '',
     })
     setErrorEdicion('')
     setModalEditar({ open: true, resena })
@@ -131,13 +132,14 @@ export default function Resenas() {
           ciudad: formEdit.ciudad,
           comentario: formEdit.comentario,
           calificacion: formEdit.calificacion,
+          producto_id: formEdit.producto_id || null,
         })
         .eq('id', modalEditar.resena.id)
       if (updateError) throw updateError
       setResenas((prev) =>
         prev.map((r) =>
           r.id === modalEditar.resena.id
-            ? { ...r, nombre_cliente: formEdit.nombre_cliente, ciudad: formEdit.ciudad, comentario: formEdit.comentario, calificacion: formEdit.calificacion }
+            ? { ...r, nombre_cliente: formEdit.nombre_cliente, ciudad: formEdit.ciudad, comentario: formEdit.comentario, calificacion: formEdit.calificacion, producto_id: formEdit.producto_id || null }
             : r
         )
       )
@@ -355,6 +357,20 @@ export default function Resenas() {
                   onChange={(e) => setFormEdit((f) => ({ ...f, comentario: e.target.value }))}
                   className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">Producto asociado</label>
+                <select
+                  value={formEdit.producto_id}
+                  onChange={(e) => setFormEdit((f) => ({ ...f, producto_id: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                >
+                  <option value="">— Sin producto asociado —</option>
+                  {productos.map((p) => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
