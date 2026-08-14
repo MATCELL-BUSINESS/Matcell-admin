@@ -10,6 +10,7 @@ const ESTADOS_PEDIDO = [
   { value: 'en_camino', label: 'En camino', clase: 'bg-purple-50 text-purple-700' },
   { value: 'entregado', label: 'Entregado', clase: 'bg-green-50 text-green-700' },
   { value: 'cancelado', label: 'Cancelado', clase: 'bg-red-50 text-red-700' },
+  { value: 'pendiente_contraentrega', label: 'Pendiente — Contraentrega', clase: 'bg-orange-50 text-orange-700' },
 ]
 
 const METODOS_ENVIO = {
@@ -216,6 +217,7 @@ export default function Pedidos() {
         pedido_id: modalGuia.pedido.id,
         distributor_id: distributorId,
         warehouse_id: warehouseId,
+        es_contraentrega: modalGuia.pedido.metodo_pago === 'contraentrega',
       })
       setGuiaGenerada(String(data.guide_number))
       // Reflejar en la lista local
@@ -302,9 +304,16 @@ export default function Pedidos() {
                     <td className="px-4 py-3 text-slate-500">{pedido.ciudad || '—'}</td>
                     <td className="px-4 py-3 text-slate-700">{formatPrecio(pedido.total)}</td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${estadoPedido.clase}`}>
-                        {estadoPedido.label}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${estadoPedido.clase}`}>
+                          {estadoPedido.label}
+                        </span>
+                        {pedido.metodo_pago === 'contraentrega' && (
+                          <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white" style={{ backgroundColor: '#FF6B00' }}>
+                            Contraentrega
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -332,7 +341,7 @@ export default function Pedidos() {
       >
         {detalle.pedido && (
           <div className="space-y-5">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {(() => {
                 const estadoPedido = badgeEstadoPedido(detalle.pedido.estado_pedido)
                 return (
@@ -341,6 +350,11 @@ export default function Pedidos() {
                   </span>
                 )
               })()}
+              {detalle.pedido.metodo_pago === 'contraentrega' && (
+                <span className="rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-white" style={{ backgroundColor: '#FF6B00' }}>
+                  Contraentrega
+                </span>
+              )}
               <span
                 className={`rounded-full px-2.5 py-1 text-xs font-medium ${badgeEstadoPago(
                   detalle.pedido.estado_pago
@@ -439,6 +453,13 @@ export default function Pedidos() {
                 </div>
               )}
             </div>
+
+            {detalle.pedido.metodo_pago === 'contraentrega' && detalle.pedido.tarifa_contraentrega && (
+              <div className="flex items-center gap-2 rounded-lg border border-orange-100 bg-orange-50 px-3 py-2 text-sm">
+                <span className="text-orange-600">Tarifa contraentrega:</span>
+                <span className="font-semibold text-orange-800">{formatPrecio(detalle.pedido.tarifa_contraentrega)}</span>
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-4">
               <div className="flex gap-6 text-sm">
