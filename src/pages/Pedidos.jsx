@@ -91,6 +91,7 @@ export default function Pedidos() {
   const [cargandoGuia, setCargandoGuia] = useState(false)
   const [guiaGenerada, setGuiaGenerada] = useState('')
   const [errorGuia, setErrorGuia] = useState('')
+  const [cargandoPdf, setCargandoPdf] = useState(null)
 
   useEffect(() => {
     loadPedidos()
@@ -171,6 +172,36 @@ export default function Pedidos() {
 
   function cerrarModalGuia() {
     setModalGuia({ open: false, pedido: null })
+  }
+
+  async function descargarPdf(pedido) {
+    setCargandoPdf(pedido.id)
+    try {
+      const { data, error } = await supabase.functions.invoke('heka-guia', {
+        body: { action: 'descargar_pdf', shipment_id: pedido.heka_shipment_id },
+      })
+      if (error) throw new Error(error.message)
+      if (data?.error) throw new Error(data.error)
+
+      if (data.tipo === 'pdf_base64') {
+        const bytes = Uint8Array.from(atob(data.contenido), (c) => c.charCodeAt(0))
+        const blob = new Blob([bytes], { type: 'application/pdf' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `guia-${pedido.heka_guide_number}.pdf`
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      } else if (data.tipo === 'url') {
+        window.open(data.contenido, '_blank')
+      } else {
+        throw new Error('Formato de respuesta no reconocido: ' + JSON.stringify(data.contenido))
+      }
+    } catch (err) {
+      setError('No se pudo descargar el PDF: ' + err.message)
+    } finally {
+      setCargandoPdf(null)
+    }
   }
 
   async function generarGuia() {
@@ -426,9 +457,21 @@ export default function Pedidos() {
               </div>
               {detalle.pedido.metodo_envio !== 'recogida_local' && (
                 detalle.pedido.heka_guide_number ? (
-                  <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
-                    Guía generada: {detalle.pedido.heka_guide_number}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+                      Guía: {detalle.pedido.heka_guide_number}
+                    </span>
+                    {detalle.pedido.heka_shipment_id && (
+                      <button
+                        type="button"
+                        disabled={cargandoPdf === detalle.pedido.id}
+                        onClick={() => descargarPdf(detalle.pedido)}
+                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-default disabled:opacity-50"
+                      >
+                        {cargandoPdf === detalle.pedido.id ? 'Descargando…' : '📄 Descargar guía PDF'}
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <button
                     type="button"
