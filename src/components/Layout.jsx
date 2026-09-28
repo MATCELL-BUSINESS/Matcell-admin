@@ -13,6 +13,7 @@ const navItems = [
   { to: '/resenas', label: 'Reseñas', icon: '⭐', badge: 'resenas' },
   { to: '/usuarios', label: 'Usuarios', icon: '👥', badge: 'usuarios' },
   { to: '/stock', label: 'Stock', icon: '🗃️' },
+  { to: '/historial', label: 'Historial', icon: '📋' },
   { to: '/envios', label: 'Envíos', icon: '🚚' },
   { to: '/configuracion-tienda', label: 'Configuración', icon: '⚙️' },
 ]

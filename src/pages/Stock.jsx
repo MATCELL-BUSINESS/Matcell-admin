@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
+
+const MOTIVOS = [
+  'Venta local',
+  'Venta WhatsApp/Instagram',
+  'Entrada de inventario',
+  'Producto dañado',
+  'Ajuste de conteo',
+  'Otro',
+]
 
 // ---- helpers ----
 
@@ -28,6 +38,7 @@ function Toast({ mensaje, onDone }) {
 // ---- component ----
 
 export default function Stock() {
+  const { user } = useAuth()
   const [variantes, setVariantes] = useState([])        // [{...variante, producto}]
   const [categorias, setCategorias] = useState([])
   const [subcategorias, setSubcategorias] = useState([])
@@ -41,6 +52,7 @@ export default function Stock() {
 
   // Map<varianteId, string> de lo que el admin escribe en "Nuevo stock"
   const [nuevosStocks, setNuevosStocks] = useState({})
+  const [motivo, setMotivo] = useState('Ajuste de conteo')
   // Map<varianteId, string> mensajes de error por fila
   const [erroresFila, setErroresFila] = useState({})
   // Set de varianteIds guardando en este momento
@@ -143,6 +155,21 @@ export default function Stock() {
     return { ok: true, valor: n }
   }
 
+  async function registrarMovimiento(variante, stockAnterior, stockNuevo) {
+    await supabase.from('inventario_movimientos').insert({
+      producto_id: variante.producto_id,
+      variante_id: variante.id,
+      producto_nombre: variante.producto?.nombre ?? '',
+      variante_descripcion: descripcionVariante(variante),
+      stock_anterior: stockAnterior,
+      stock_nuevo: stockNuevo,
+      diferencia: stockNuevo - stockAnterior,
+      motivo,
+      origen: 'ajuste_manual',
+      usuario_id: user?.id ?? null,
+    })
+  }
+
   async function guardarFila(varianteId) {
     const raw = nuevosStocks[varianteId]
     if (raw === '' || raw === undefined) return
@@ -157,11 +184,16 @@ export default function Stock() {
     setErroresFila((prev) => { const n = { ...prev }; delete n[varianteId]; return n })
 
     try {
+      const variante = variantes.find((v) => v.id === varianteId)
+      const stockAnterior = variante?.stock ?? 0
+
       const { error: updateError } = await supabase
         .from('producto_variantes')
         .update({ stock: valor })
         .eq('id', varianteId)
       if (updateError) throw updateError
+
+      if (variante) await registrarMovimiento(variante, stockAnterior, valor)
 
       setVariantes((prev) =>
         prev.map((v) => (v.id === varianteId ? { ...v, stock: valor } : v))
@@ -179,7 +211,6 @@ export default function Stock() {
     const pendientes = Object.entries(nuevosStocks).filter(([, v]) => v !== '')
     if (pendientes.length === 0) return
 
-    // Validar todo primero
     const errores = {}
     const validos = []
     for (const [id, raw] of pendientes) {
@@ -199,11 +230,16 @@ export default function Stock() {
     await Promise.all(
       validos.map(async ({ id, valor }) => {
         try {
+          const variante = variantes.find((v) => v.id === id)
+          const stockAnterior = variante?.stock ?? 0
+
           const { error: updateError } = await supabase
             .from('producto_variantes')
             .update({ stock: valor })
             .eq('id', id)
           if (updateError) throw updateError
+
+          if (variante) await registrarMovimiento(variante, stockAnterior, valor)
           actualizados.push({ id, valor })
         } catch (err) {
           nuevosErrores[id] = err.message
@@ -231,7 +267,7 @@ export default function Stock() {
     }
 
     setGuardandoTodo(false)
-  }, [nuevosStocks])
+  }, [nuevosStocks, variantes, motivo, user])
 
   const filasConPendiente = Object.values(nuevosStocks).filter((v) => v !== '').length
 
@@ -263,6 +299,18 @@ export default function Stock() {
           </button>
         }
       />
+
+      {/* Motivo del ajuste */}
+      <div className="mb-4 flex items-center gap-3">
+        <label className="text-sm font-medium text-slate-700">Motivo del ajuste:</label>
+        <select
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+        >
+          {MOTIVOS.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </div>
 
       {/* Filtros */}
       <div className="mb-4 flex flex-wrap gap-3">

@@ -10,6 +10,7 @@ import Pedidos from './pages/Pedidos'
 import Resenas from './pages/Resenas'
 import Usuarios from './pages/Usuarios'
 import Stock from './pages/Stock'
+import Historial from './pages/Historial'
 import ConfiguracionEnvios from './pages/ConfiguracionEnvios'
 import ConfiguracionTienda from './pages/ConfiguracionTienda'
 
@@ -30,6 +31,7 @@ export default function App() {
               <Route path="/resenas" element={<Resenas />} />
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/stock" element={<Stock />} />
+              <Route path="/historial" element={<Historial />} />
               <Route path="/envios" element={<ConfiguracionEnvios />} />
               <Route path="/configuracion-tienda" element={<ConfiguracionTienda />} />
             </Route>
