@@ -89,6 +89,9 @@ export default function Productos() {
   const [fotosActivo, setFotosActivo] = useState([])
   const [subiendoFoto, setSubiendoFoto] = useState(false)
   const [dragSobreFotos, setDragSobreFotos] = useState(false)
+  const [draggingFotoIdx, setDraggingFotoIdx] = useState(null)
+  const [dragOverFotoIdx, setDragOverFotoIdx] = useState(null)
+  const [guardandoOrden, setGuardandoOrden] = useState(false)
 
   const BUNDLE_VACIO = {
     bundle_2_activo: false, bundle_2_tipo: 'porcentaje', bundle_2_descuento: '',
@@ -634,6 +637,60 @@ export default function Productos() {
     }
   }
 
+  async function aplicarOrden(nuevasFotos) {
+    setFotosActivo(nuevasFotos)
+    setGuardandoOrden(true)
+    try {
+      await Promise.all(
+        nuevasFotos.map((foto, idx) =>
+          supabase.from('producto_fotos').update({ orden: idx + 1 }).eq('id', foto.id)
+        )
+      )
+      setFotosPorProducto((prev) => ({ ...prev, [productoIdActivo]: nuevasFotos }))
+    } catch (err) {
+      setFormError('No se pudo guardar el orden. ' + err.message)
+    } finally {
+      setGuardandoOrden(false)
+    }
+  }
+
+  function moverFoto(idx, direccion) {
+    const destino = idx + direccion
+    if (destino < 0 || destino >= fotosActivo.length) return
+    const copia = [...fotosActivo]
+    ;[copia[idx], copia[destino]] = [copia[destino], copia[idx]]
+    aplicarOrden(copia)
+  }
+
+  function handleDragStartFoto(idx) {
+    setDraggingFotoIdx(idx)
+  }
+
+  function handleDragOverFoto(e, idx) {
+    e.preventDefault()
+    setDragOverFotoIdx(idx)
+  }
+
+  function handleDropFoto(e, idx) {
+    e.preventDefault()
+    if (draggingFotoIdx === null || draggingFotoIdx === idx) {
+      setDraggingFotoIdx(null)
+      setDragOverFotoIdx(null)
+      return
+    }
+    const copia = [...fotosActivo]
+    const [movida] = copia.splice(draggingFotoIdx, 1)
+    copia.splice(idx, 0, movida)
+    setDraggingFotoIdx(null)
+    setDragOverFotoIdx(null)
+    aplicarOrden(copia)
+  }
+
+  function handleDragEndFoto() {
+    setDraggingFotoIdx(null)
+    setDragOverFotoIdx(null)
+  }
+
   return (
     <div>
       <PageHeader
@@ -1177,22 +1234,81 @@ export default function Productos() {
               </p>
             ) : (
               <div>
-                {/* Miniaturas existentes */}
+                {/* Miniaturas existentes — arrastrables */}
                 {fotosActivo.length > 0 && (
-                  <div className="mb-3 flex flex-wrap gap-3">
-                    {fotosActivo.map((foto) => (
-                      <div key={foto.id} className="group relative h-30 w-30" style={{ width: 120, height: 120 }}>
-                        <div className="flex h-full w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-100">
-                          <img src={foto.url} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
+                  <div className="mb-3">
+                    {guardandoOrden && (
+                      <p className="mb-2 text-xs text-slate-400">Guardando orden…</p>
+                    )}
+                    <p className="mb-2 text-xs text-slate-400">
+                      Arrastra para reordenar · La primera foto es la imagen principal
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      {fotosActivo.map((foto, idx) => (
+                        <div
+                          key={foto.id}
+                          className="relative flex flex-col items-center"
+                          style={{ width: 120 }}
+                        >
+                          {/* Indicador de drop a la izquierda */}
+                          {dragOverFotoIdx === idx && draggingFotoIdx !== idx && draggingFotoIdx > idx && (
+                            <div className="pointer-events-none absolute -left-2 top-0 bottom-0 w-1 rounded bg-brand-500" />
+                          )}
+
+                          <div
+                            draggable
+                            onDragStart={() => handleDragStartFoto(idx)}
+                            onDragOver={(e) => handleDragOverFoto(e, idx)}
+                            onDrop={(e) => handleDropFoto(e, idx)}
+                            onDragEnd={handleDragEndFoto}
+                            className={`group relative cursor-grab active:cursor-grabbing select-none`}
+                            style={{
+                              width: 120,
+                              height: 120,
+                              opacity: draggingFotoIdx === idx ? 0.4 : 1,
+                              outline: dragOverFotoIdx === idx && draggingFotoIdx !== idx
+                                ? '2px solid #6366f1'
+                                : idx === 0 ? '2px solid #22c55e' : 'none',
+                              borderRadius: 8,
+                            }}
+                          >
+                            <div className="flex h-full w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-100">
+                              <img src={foto.url} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
+                            </div>
+                            {idx === 0 && (
+                              <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-green-500 px-1.5 py-0.5 text-[9px] font-bold text-white whitespace-nowrap">
+                                Principal
+                              </span>
+                            )}
+                            <span className="absolute bottom-0 left-0 right-0 truncate rounded-b-lg bg-black/60 px-1 py-0.5 text-center text-[10px] text-white">
+                              {foto.color || 'General'}
+                            </span>
+                            <button type="button" onClick={() => handleEliminarFoto(foto)}
+                              className="absolute -right-2 top-4 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow hover:bg-red-700"
+                              aria-label="Eliminar">✕</button>
+                          </div>
+
+                          {/* Botones ↑↓ para móvil */}
+                          <div className="mt-1 flex gap-1 sm:hidden">
+                            <button type="button" onClick={() => moverFoto(idx, -1)}
+                              disabled={idx === 0}
+                              className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-500 disabled:opacity-30 hover:bg-slate-100">
+                              ←
+                            </button>
+                            <button type="button" onClick={() => moverFoto(idx, 1)}
+                              disabled={idx === fotosActivo.length - 1}
+                              className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-500 disabled:opacity-30 hover:bg-slate-100">
+                              →
+                            </button>
+                          </div>
+
+                          {/* Indicador de drop a la derecha */}
+                          {dragOverFotoIdx === idx && draggingFotoIdx !== idx && draggingFotoIdx < idx && (
+                            <div className="pointer-events-none absolute -right-2 top-0 bottom-0 w-1 rounded bg-brand-500" />
+                          )}
                         </div>
-                        <span className="absolute bottom-0 left-0 right-0 truncate rounded-b-lg bg-black/60 px-1 py-0.5 text-center text-[10px] text-white">
-                          {foto.color || 'General'}
-                        </span>
-                        <button type="button" onClick={() => handleEliminarFoto(foto)}
-                          className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow hover:bg-red-700"
-                          aria-label="Eliminar">✕</button>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
 
